@@ -1,19 +1,21 @@
 package errors
 
-import io.circe.{Codec, Encoder}
+import io.circe.Codec
+import sttp.model.StatusCode
+import sttp.tapir._
+import sttp.tapir.generic.auto._
+import sttp.tapir.json.circe._
 
-sealed trait ServiceError
+final case class ServiceError(code: Int, message: String)
 
 object ServiceError {
 
-  final case class NotFound(id: String, entity: String) extends ServiceError
-  final case class Other(message: String)               extends ServiceError
+  implicit val codec: Codec[ServiceError] = io.circe.generic.semiauto.deriveCodec[ServiceError]
 
-  implicit val codecNotFound: Codec[NotFound] = io.circe.generic.semiauto.deriveCodec
-  implicit val codecOther: Codec[Other]       = io.circe.generic.semiauto.deriveCodec
-
-  implicit val encoder: Encoder[ServiceError] = {
-    case x: NotFound => codecNotFound(x)
-    case x: Other    => codecOther(x)
-  }
+  val apiErrors = oneOf[ServiceError](
+    oneOfVariantValueMatcher(StatusCode.NotFound, jsonBody[ServiceError]) { case ServiceError(code, _) => code == StatusCode.NotFound.code },
+    oneOfVariantValueMatcher(StatusCode.Conflict, jsonBody[ServiceError]) { case ServiceError(code, _) => code == StatusCode.Conflict.code },
+    oneOfVariantValueMatcher(StatusCode.Unauthorized, jsonBody[ServiceError]) { case ServiceError(code, _) => code == StatusCode.Unauthorized.code },
+    oneOfDefaultVariant(statusCode(StatusCode.InternalServerError).and(jsonBody[ServiceError]))
+  )
 }

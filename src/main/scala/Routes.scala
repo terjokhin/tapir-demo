@@ -1,18 +1,31 @@
-import akka.http.scaladsl.server.Route
+import cats.effect.{IO, Resource}
 import org.daron.tapir.demo.Endpoints
-import sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter
+import org.http4s.HttpRoutes
+import sttp.tapir.server.http4s.Http4sServerInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+class Routes(endpoints: Endpoints, logic: Logic) {
+
+  private val swaggerEndpoints =
+    SwaggerInterpreter()
+      .fromEndpoints[IO](List(endpoints.health, endpoints.saveUser, endpoints.findUser, endpoints.listUsers), "Some Service", "1.0.1")
+
+  val routes: HttpRoutes[IO] = Http4sServerInterpreter[IO]().toRoutes(
+    List(
+      endpoints.health.serverLogic(_ => logic.health),
+      endpoints.saveUser.serverSecurityLogic(logic.auth).serverLogic(logic.saveUser),
+      endpoints.findUser.serverLogic(logic.findUser),
+      endpoints.listUsers.serverLogic(logic.listUsers)
+    ) ++ swaggerEndpoints
+  )
+}
 
 object Routes {
 
-  private val swaggerEndpoints = SwaggerInterpreter().fromEndpoints[Future](List(Endpoints.health), "Some Service", "1.0.1")
+  def make(services: Services): Resource[IO, HttpRoutes[IO]] = {
+    val endpoints = new Endpoints
+    val logic     = new Logic(services.userService, services.authService)
 
-  val akkaRoutes: Route = AkkaHttpServerInterpreter().toRoute(
-    List(
-      Endpoints.health.serverLogic(_ => Logic.health)
-    ) ++ swaggerEndpoints
-  )
+    Resource.pure(new Routes(endpoints, logic).routes)
+  }
 }

@@ -11,10 +11,11 @@ lazy val root = (project in file("."))
       Cats.core,
       Circe.core,
       Circe.generic,
+      Http4s.blaze,
       Tapir.core,
       Tapir.circe,
       Tapir.swagger,
-      Tapir.akka,
+      Tapir.http4s,
       Other.log4Cats,
       Other.logback
     )

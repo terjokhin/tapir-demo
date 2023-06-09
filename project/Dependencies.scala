@@ -18,6 +18,10 @@ object Dependencies {
     val generic = lib("circe-generic")
   }
 
+  object Http4s {
+    val blaze = "org.http4s" %% "http4s-blaze-server" % "0.23.14"
+  }
+
   object Tapir {
     private val version = "1.5.1"
     private val groupId = "com.softwaremill.sttp.tapir"
@@ -27,7 +31,7 @@ object Dependencies {
     val core    = lib("tapir-core")
     val circe   = lib("tapir-json-circe")
     val swagger = lib("tapir-swagger-ui-bundle")
-    val akka    = lib("tapir-akka-http-server")
+    val http4s  = lib("tapir-http4s-server")
   }
 
   object Other {

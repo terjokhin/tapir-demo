@@ -1,41 +1,13 @@
-import akka.actor.ActorSystem
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.Http.ServerBinding
-import akka.http.scaladsl.server.Route
+import cats.effect.IO
 import cats.effect.kernel.Resource
-import cats.effect.{ExitCode, IO, IOApp}
-import org.typelevel.log4cats.slf4j.Slf4jLogger
+import org.http4s.HttpRoutes
+import org.http4s.blaze.server.BlazeServerBuilder
+import org.http4s.server.Server
 
-object Server extends IOApp {
+object Server {
 
-  private val logger = Slf4jLogger.getLogger[IO]
-
-  def makeRoutes: Resource[IO, Route] = Resource.pure(Routes.akkaRoutes)
-
-  def makeSystem(name: String): Resource[IO, ActorSystem] =
-    Resource.make(IO(ActorSystem(name)))(ac => IO.fromFuture(IO(ac.terminate())).void)
-
-  def makeServer(route: Route, actorSystem: ActorSystem): Resource[IO, ServerBinding] = Resource.make(acruire(route, actorSystem))(release)
-
-  private def acruire(route: Route, actorSystem: ActorSystem): IO[ServerBinding] = {
-    implicit val ac = actorSystem
-
-    for {
-      _      <- logger.info("Starting Server")
-      result <- IO.fromFuture(IO(Http().newServerAt("localhost", 8888).bind(route)))
-    } yield result
+  def make(routes: HttpRoutes[IO]): Resource[IO, Server] = {
+    val router = routes.orNotFound
+    BlazeServerBuilder[IO].bindLocal(8888).withHttpApp(router).resource
   }
-
-  private def release(b: ServerBinding): IO[Unit] = for {
-    _ <- logger.info("Stopping Server")
-    _ <- IO.fromFuture(IO(b.unbind()))
-  } yield ()
-
-  private def resources: Resource[IO, Unit] = for {
-    routes <- makeRoutes
-    system <- makeSystem("BestSystem")
-    _      <- makeServer(routes, system)
-  } yield ()
-
-  override def run(args: List[String]): IO[ExitCode] = resources.use(_ => IO.never)
 }

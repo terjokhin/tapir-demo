@@ -12,6 +12,8 @@
         <appender-ref ref="STDOUT"/>
     </root>
 
-    <logger name="sttp.tapir.server.akkahttp.AkkaHttpServerInterpreter" level="ERROR"/>
+    <logger name="org.http4s.blazecore" level="ERROR"/>
+    <logger name="org.http4s.blaze" level="ERROR"/>
+    <logger name="sttp.tapir.server.http4s" level="ERROR"/>
 
 </configuration>
